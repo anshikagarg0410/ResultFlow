@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -107,7 +107,7 @@
 </header>
 
 <div class="layout">
-  <!-- Sidebar -->
+
   <div class="sidebar">
     <div class="section-label">Active Algorithm</div>
     <div class="algo-badge">
@@ -148,7 +148,7 @@
     </div>
   </div>
 
-  <!-- Chart area -->
+
   <div class="chart-area">
     <div class="refresh-info" id="lastUpdated">Auto-refreshes every 2s</div>
     <div class="chart-card">
@@ -295,6 +295,166 @@ fetchMetrics();
 checkLBHealth();
 setInterval(fetchMetrics,  2000);
 setInterval(fetchStatus,   5000);
+setInterval(checkLBHealth, 30000);
+</script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Result Flow — Live Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="brand"><div class="logo">RF</div>Result Flow</div>
+    <nav class="nav">
+      <a href="index.html">Portal</a>
+      <a href="cpuUsage.html" class="on">Dashboard</a>
+      <a href="requestCount.html">Connections</a>
+    </nav>
+  </div>
+
+  <div class="banner">
+    <small>Live infrastructure</small>
+    <h2>Let's watch the servers work</h2>
+  </div>
+
+  <div class="grid">
+    <div>
+      <h3 class="sec">Server pool</h3>
+      <div class="tiles" id="serverList"><span style="font-size:13px;color:var(--muted)">Fetching…</span></div>
+      <div class="card">
+        <h3 class="sec">CPU usage per server (%)</h3>
+        <div class="updated" id="lastUpdated">Auto-refreshes every 2s</div>
+        <canvas id="cpuChart"></canvas>
+      </div>
+    </div>
+
+    <aside>
+      <div class="card">
+        <h3 class="sec">Active algorithm</h3>
+        <div class="big" id="currentAlgo" style="margin-bottom:14px">Loading…</div>
+        <div class="stats" style="margin-bottom:0">
+          <div class="stat s2"><div class="num" id="primaryCount">—</div><div class="lbl">Active</div></div>
+          <div class="stat s1"><div class="num" id="standbyCount">—</div><div class="lbl">Standby</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="sec">Change algorithm</h3>
+        <select id="algoSelect">
+          <option>Round Robin</option>
+          <option>Weighted Round Robin</option>
+          <option>Least Connections</option>
+          <option>Least Response Time</option>
+          <option>Dynamic</option>
+        </select>
+        <button class="btn" onclick="changeAlgorithm()">Apply to all balancers</button>
+        <div class="msg" id="applyMsg">Algorithm updated.</div>
+      </div>
+      <div class="card">
+        <h3 class="sec">Load balancers</h3>
+        <div id="lbStatus"><div class="row" style="color:var(--muted)">Checking…</div></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const LB_MAIN = 'http://localhost:4002';
+const LB_ALL  = ['http://localhost:4001', 'http://localhost:4002'];
+let cpuChart  = null;
+Chart.defaults.font.family = 'Poppins, sans-serif';
+Chart.defaults.color = '#6b7385';
+
+async function fetchStatus() {
+  try {
+    const data = await (await fetch(`${LB_MAIN}/status`)).json();
+    document.getElementById('currentAlgo').textContent  = data.algorithm;
+    document.getElementById('primaryCount').textContent = data.primaryServers.length;
+    document.getElementById('standbyCount').textContent = data.scalingServers.length;
+
+    let html = '';
+    (data.primaryServers || []).forEach((s, i) => {
+      const p = s.split(':')[2];
+      html += `<div class="tile"><div class="art c${i % 4}">:${p}</div><b class="t${i % 4}">Server ${p}</b><span>Primary</span></div>`;
+    });
+    (data.scalingServers || []).forEach(s => {
+      const p = s.split(':')[2];
+      html += `<div class="tile standby"><div class="art idle">:${p}</div><b>Server ${p}</b><span>Standby</span></div>`;
+    });
+    document.getElementById('serverList').innerHTML = html || '<span style="font-size:13px;color:var(--muted)">No data</span>';
+  } catch {
+    document.getElementById('serverList').innerHTML = '<span style="font-size:13px;color:var(--bad)">Load balancer unreachable</span>';
+  }
+}
+
+async function fetchMetrics() {
+  try {
+    const metrics = await (await fetch(`${LB_MAIN}/metrics`)).json();
+    const servers = Object.keys(metrics.cpuUsages);
+    const labels  = servers.map(s => 'Srv:' + s.split(':')[2]);
+    const values  = servers.map(s => metrics.cpuUsages[s] || 0);
+    const colors  = values.map(v => v > 75 ? '#ef7d93' : v > 50 ? '#f5c26b' : '#9bd8ee');
+
+    if (cpuChart) {
+      cpuChart.data.labels = labels;
+      cpuChart.data.datasets[0].data = values;
+      cpuChart.data.datasets[0].backgroundColor = colors;
+      cpuChart.update('none');
+    } else {
+      cpuChart = new Chart(document.getElementById('cpuChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'CPU usage (%)', data: values, backgroundColor: colors, borderRadius: 10, borderSkipped: false }] },
+        options: {
+          responsive: true,
+          animation: { duration: 400 },
+          scales: {
+            y: { beginAtZero: true, max: 100, grid: { color: '#ececf2' } },
+            x: { grid: { display: false } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+  } catch { /* keep last chart if the balancer is down */ }
+}
+
+async function checkLBHealth() {
+  let html = '';
+  for (const url of LB_ALL) {
+    const port = url.split(':')[2];
+    try { await fetch(`${url}/health`); html += `<div class="row"><span>LB-${port}</span><span class="up">Online</span></div>`; }
+    catch { html += `<div class="row"><span>LB-${port}</span><span class="down">Offline</span></div>`; }
+  }
+  document.getElementById('lbStatus').innerHTML = html;
+}
+
+async function changeAlgorithm() {
+  const algo = document.getElementById('algoSelect').value;
+  for (const url of LB_ALL) {
+    try {
+      await fetch(`${url}/changeAlgorithm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ algorithm: algo }),
+      });
+    } catch { /* skip offline balancer */ }
+  }
+  document.getElementById('currentAlgo').textContent = algo;
+  const msg = document.getElementById('applyMsg');
+  msg.style.display = 'block';
+  setTimeout(() => { msg.style.display = 'none'; }, 2500);
+}
+
+fetchStatus(); fetchMetrics(); checkLBHealth();
+setInterval(fetchMetrics, 2000);
+setInterval(fetchStatus, 5000);
 setInterval(checkLBHealth, 30000);
 </script>
 </body>

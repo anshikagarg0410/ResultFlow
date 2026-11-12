@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -275,14 +275,78 @@
   </div>
 
   <div id="resultSection" style="display:none;" class="result-card">
-    <!-- Populated by script.js -->
+   
   </div>
-</main>
+</main> -->
 
-<footer>
+<!-- <footer>
   Developed by <strong>Anushka Yadav</strong> &nbsp;|&nbsp; B.Tech Cloud Computing Project &nbsp;|&nbsp; Result Flow v1.0
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Result Flow — Student Result Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="brand"><div class="logo">RF</div>Result Flow</div>
+    <nav class="nav">
+      <a href="index.html" class="on">Portal</a>
+      <a href="cpuUsage.html">Dashboard</a>
+      <a href="requestCount.html">Connections</a>
+    </nav>
+  </div>
+
+  <div class="banner">
+    <small>Welcome, student</small>
+    <h2>Let's check your result</h2>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h3 class="sec">Find your result</h3>
+        <label for="rollNumber">Roll number</label>
+        <input type="text" id="rollNumber" placeholder="e.g. RF2101001" autocomplete="off" />
+        <label for="algorithm">Load balancing algorithm</label>
+        <select id="algorithm">
+          <option>Round Robin</option>
+          <option>Weighted Round Robin</option>
+          <option>Least Connections</option>
+          <option>Least Response Time</option>
+          <option>Dynamic</option>
+        </select>
+        <button class="btn" id="getResultBtn" onclick="getResult()">Get result</button>
+        <div id="statusBar" class="status info">Checking load balancer connection…</div>
+      </div>
+      <div id="resultSection" class="card" style="display:none"></div>
+    </div>
+
+    <aside>
+      <div class="card">
+        <h3 class="sec">Demo roll numbers</h3>
+        <div class="topics" id="topics"></div>
+      </div>
+      <div class="card">
+        <h3 class="sec">Watch it live</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Switch algorithms here, then see requests spread across servers.</p>
+        <a class="btn" style="display:block;text-align:center;text-decoration:none" href="cpuUsage.html" target="_blank">Open dashboard</a>
+      </div>
+    </aside>
+  </div>
+
+  <div class="foot">Developed by Anushka Yadav &amp; Anshika Garg · B.Tech Cloud Computing project</div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="script.js"></script>
 </body>

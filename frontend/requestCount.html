@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -141,6 +141,92 @@ async function fetchMetrics() {
     document.getElementById('lastUpdated').textContent =
       'Last updated: ' + new Date().toLocaleTimeString();
   } catch { /* silent fail when LB is down */ }
+}
+
+fetchMetrics();
+setInterval(fetchMetrics, 2000);
+</script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Result Flow — Active Connections</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="brand"><div class="logo">RF</div>Result Flow</div>
+    <nav class="nav">
+      <a href="index.html">Portal</a>
+      <a href="cpuUsage.html">Dashboard</a>
+      <a href="requestCount.html" class="on">Connections</a>
+    </nav>
+  </div>
+
+  <div class="banner">
+    <small>Traffic overview</small>
+    <h2>See where requests are going</h2>
+  </div>
+
+  <div class="stats">
+    <div class="stat s0"><div class="num" id="totalConn">0</div><div class="lbl">Total active connections</div></div>
+    <div class="stat s1"><div class="num" id="avgConn">0.00</div><div class="lbl">Average per server</div></div>
+    <div class="stat s2"><div class="num" id="serverCount">—</div><div class="lbl">Primary servers</div></div>
+  </div>
+
+  <div class="card">
+    <h3 class="sec">Active connections per server</h3>
+    <div class="updated" id="lastUpdated">Auto-refreshes every 2s</div>
+    <canvas id="connChart"></canvas>
+  </div>
+</div>
+
+<script>
+const LB_URL = 'http://localhost:4002';
+let connChart = null;
+Chart.defaults.font.family = 'Poppins, sans-serif';
+Chart.defaults.color = '#6b7385';
+
+async function fetchMetrics() {
+  try {
+    const metrics = await (await fetch(`${LB_URL}/metrics`)).json();
+    const servers = Object.keys(metrics.requestCounts);
+    const labels  = servers.map(s => 'Srv:' + s.split(':')[2]);
+    const values  = servers.map(s => metrics.requestCounts[s] || 0);
+    const total   = values.reduce((a, b) => a + b, 0);
+
+    document.getElementById('totalConn').textContent   = total;
+    document.getElementById('avgConn').textContent     = servers.length ? (total / servers.length).toFixed(2) : '0.00';
+    document.getElementById('serverCount').textContent = servers.length;
+
+    if (connChart) {
+      connChart.data.labels = labels;
+      connChart.data.datasets[0].data = values;
+      connChart.update('none');
+    } else {
+      connChart = new Chart(document.getElementById('connChart').getContext('2d'), {
+        type: 'line',
+        data: { labels, datasets: [{
+          label: 'Active connections', data: values,
+          borderColor: '#0a9bd8', backgroundColor: 'rgba(155,216,238,0.4)',
+          borderWidth: 3, pointBackgroundColor: '#f0a7b8', pointBorderColor: '#fff', pointRadius: 6,
+          fill: true, tension: 0.35
+        }] },
+        options: {
+          responsive: true,
+          animation: { duration: 400 },
+          scales: { y: { beginAtZero: true, grid: { color: '#ececf2' } }, x: { grid: { display: false } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+  } catch { /* keep last chart if the balancer is down */ }
 }
 
 fetchMetrics();

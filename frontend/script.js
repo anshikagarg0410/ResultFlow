@@ -2,6 +2,7 @@
  * Result Flow — Student Result Portal Script
  * Author: Anushka Yadav
  * Cloud Computing Project — B.Tech CSE
+ * (Original logic kept; markup updated for the new theme)
  */
 
 const LOAD_BALANCERS = [
@@ -9,8 +10,8 @@ const LOAD_BALANCERS = [
   { id: 'LB-2', url: 'http://localhost:4002' },
 ];
 
-let activeLBs    = [];
-let lbIndex      = 0;
+let activeLBs = [];
+let lbIndex   = 0;
 
 // ── Load balancer health check ────────────────────────────────────────────────
 async function checkLBHealth() {
@@ -28,16 +29,12 @@ async function checkLBHealth() {
   }
 
   if (activeLBs.length > 0) {
-    statusBar.className = 'status-bar ok';
-    statusBar.innerHTML =
-      `<div class="status-dot"></div>
-       <span>${activeLBs.length} load balancer(s) online — Ready to serve requests</span>`;
+    statusBar.className   = 'status ok';
+    statusBar.textContent = `${activeLBs.length} load balancer(s) online. Ready to serve requests.`;
     btn.disabled = false;
   } else {
-    statusBar.className = 'status-bar error';
-    statusBar.innerHTML =
-      `<div class="status-dot"></div>
-       <span>⚠ No load balancers reachable. Start the load balancer service first (npm start in load-balancers/).</span>`;
+    statusBar.className   = 'status error';
+    statusBar.textContent = 'No load balancers reachable. Run npm start in the load-balancers folder first.';
     btn.disabled = true;
   }
 }
@@ -55,7 +52,7 @@ async function getResult() {
   const algorithm  = document.getElementById('algorithm').value;
 
   if (!rollNumber) {
-    showError('Please enter a roll number.', 'Roll number field cannot be empty.');
+    showError('Please enter a roll number.', 'The roll number field cannot be empty.');
     return;
   }
 
@@ -68,7 +65,7 @@ async function getResult() {
   try {
     const lb = getNextLB();
 
-    // Push selected algorithm to both load balancers (best-effort, non-blocking)
+    // Push selected algorithm to all active load balancers (best-effort, non-blocking)
     for (const activeLB of activeLBs) {
       fetch(`${activeLB.url}/changeAlgorithm`, {
         method:  'POST',
@@ -103,7 +100,7 @@ async function getResult() {
     console.error(err);
   } finally {
     btn.disabled  = false;
-    btn.innerHTML = 'Get Result';
+    btn.innerHTML = 'Get result';
     checkLBHealth();
   }
 }
@@ -121,77 +118,57 @@ function renderResult(data, lb, algorithm, clientElapsed) {
         <td>${idx++}</td>
         <td>${sub.name}</td>
         <td style="text-align:center;">${sub.maxMarks}</td>
-        <td class="${isLow ? 'mark-low' : ''}">${sub.marksObtained}${isLow ? ' ⚠' : ''}</td>
+        <td class="${isLow ? 'low' : ''}">${sub.marksObtained}${isLow ? ' ⚠' : ''}</td>
       </tr>`;
   }
 
   const html = `
-    <div class="result-header ${isPass ? 'pass' : 'fail'}">
+    <div class="result-head ${isPass ? 'pass' : 'fail'}">
       <div>
-        <div class="student-name">${data.name}</div>
-        <div class="student-sub">
-          Roll No: <strong>${data.rollNumber}</strong> &nbsp;|&nbsp;
-          ${data.course} &nbsp;|&nbsp; Semester ${data.semester}
-        </div>
+        <h3>${data.name}</h3>
+        <p>Roll no. ${data.rollNumber} · ${data.course} · Semester ${data.semester}</p>
       </div>
-      <div class="result-badge ${isPass ? 'pass' : 'fail'}">${data.status.toUpperCase()}</div>
+      <div class="badge">${data.status.toUpperCase()}</div>
     </div>
 
-    <div class="result-body">
-      <div class="meta-row">
-        <div class="meta-box">
-          <div class="meta-label">Total Marks</div>
-          <div class="meta-value">${data.total} / ${data.maxTotal}</div>
-        </div>
-        <div class="meta-box">
-          <div class="meta-label">Percentage</div>
-          <div class="meta-value">${data.percentage}%</div>
-        </div>
-        <div class="meta-box">
-          <div class="meta-label">Result</div>
-          <div class="meta-value" style="color:${isPass ? 'var(--success)' : 'var(--danger)'}">${data.status}</div>
-        </div>
-        <div class="meta-box">
-          <div class="meta-label">Semester</div>
-          <div class="meta-value">Sem ${data.semester}</div>
-        </div>
-      </div>
+    <div class="stats">
+      <div class="stat s1"><div class="num">${data.total}/${data.maxTotal}</div><div class="lbl">Total marks</div></div>
+      <div class="stat s0"><div class="num">${data.percentage}%</div><div class="lbl">Percentage</div></div>
+      <div class="stat s2"><div class="num">${data.status}</div><div class="lbl">Result</div></div>
+      <div class="stat s3"><div class="num">Sem ${data.semester}</div><div class="lbl">Semester</div></div>
+    </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Subject Name</th>
-            <th style="text-align:center;">Max Marks</th>
-            <th style="text-align:center;">Marks Obtained</th>
-          </tr>
-        </thead>
-        <tbody>${subjectRows}</tbody>
-        <tfoot>
-          <tr>
-            <td colspan="2">Total</td>
-            <td style="text-align:center;">${data.maxTotal}</td>
-            <td style="text-align:center;">${data.total}</td>
-          </tr>
-        </tfoot>
-      </table>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Subject name</th>
+          <th style="text-align:center;">Max marks</th>
+          <th>Marks obtained</th>
+        </tr>
+      </thead>
+      <tbody>${subjectRows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">Total</td>
+          <td style="text-align:center;">${data.maxTotal}</td>
+          <td>${data.total}</td>
+        </tr>
+      </tfoot>
+    </table>
 
-      ${!isPass ? `
-        <div class="fail-notice">
-          ⚠ Subject(s) marked in red have marks below the minimum passing mark (40).
-          The student must reappear in those subject(s).
-        </div>` : ''}
+    ${!isPass ? `
+      <div class="notice">
+        Subjects marked in red are below the minimum passing mark (40).
+        The student must reappear in those subjects.
+      </div>` : ''}
 
-      <div class="server-meta">
-        <div class="server-meta-title">⚙ Request Routing Metadata (Cloud Demo)</div>
-        <div class="server-meta-row">
-          <span>🖥 <strong>Served by:</strong> ${data.servedBy}</span>
-          <span>⚙ <strong>Algorithm:</strong> ${algorithm}</span>
-          <span>🔗 <strong>Load Balancer:</strong> ${lb.id} (${lb.url})</span>
-          <span>⏱ <strong>Response Time:</strong> ${clientElapsed}ms</span>
-          <span>🕐 <strong>At:</strong> ${new Date(data.timestamp).toLocaleTimeString()}</span>
-        </div>
-      </div>
+    <div class="chips">
+      <span class="chip">Served by <b>${data.servedBy}</b></span>
+      <span class="chip">Algorithm <b>${algorithm}</b></span>
+      <span class="chip">Load balancer <b>${lb.id} (${lb.url})</b></span>
+      <span class="chip">Response time <b>${clientElapsed} ms</b></span>
+      <span class="chip">At <b>${new Date(data.timestamp).toLocaleTimeString()}</b></span>
     </div>`;
 
   const resultSection = document.getElementById('resultSection');
@@ -205,11 +182,23 @@ function showError(title, detail) {
   const resultSection = document.getElementById('resultSection');
   resultSection.innerHTML = `
     <div class="error-state">
-      <div class="error-icon">❌</div>
       <h3>${title}</h3>
       <p>${detail || ''}</p>
     </div>`;
   resultSection.style.display = 'block';
+}
+
+// ── Demo roll number chips ────────────────────────────────────────────────────
+function buildDemoChips() {
+  document.getElementById('topics').innerHTML = Array.from({ length: 15 }, (_, i) => {
+    const roll = 'RF21010' + String(i + 1).padStart(2, '0');
+    return `<button class="topic c${i % 4}" onclick="pickRoll('${roll}')">${roll}</button>`;
+  }).join('');
+}
+
+function pickRoll(roll) {
+  document.getElementById('rollNumber').value = roll;
+  getResult();
 }
 
 // ── Keyboard shortcut ─────────────────────────────────────────────────────────
@@ -218,5 +207,6 @@ document.getElementById('rollNumber').addEventListener('keypress', (e) => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+buildDemoChips();
 checkLBHealth();
 setInterval(checkLBHealth, 60000); // re-check every minute
